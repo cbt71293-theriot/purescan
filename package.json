@@ -2,13 +2,22 @@
   "name": "purescan",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "lint": "eslint . --ext .svelte,.ts,.js",
+    "format": "prettier --write .",
+    "db:seed:additives": "tsx scripts/seed-additives.ts",
+    "db:seed:products": "tsx scripts/seed-products.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:a11y": "axe-playwright"
   },
-  "type": "module",
   "dependencies": {
     "dexie": "^4.0.0",
     "dexie-react-hooks": "^1.1.7",
@@ -18,14 +27,23 @@
     "tesseract.js": "^5.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@sveltejs/adapter-auto": "^4.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "axe-playwright": "^3.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-svelte": "^2.46.0",
+    "prettier": "^3.3.0",
+    "prettier-plugin-svelte": "^3.2.0",
     "svelte-check": "^4.0.0",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.0.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^2.0.0"
   },
   "engines": {
     "node": ">=20.0.0"

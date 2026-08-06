@@ -1,6 +1,17 @@
 <script lang="ts">
   import Scanner from "$lib/components/Scanner.svelte";
   import ProductCard from "$lib/components/ProductCard.svelte";
+  import type { ScanResult } from "$lib/stores/scanner.js";
+
+  import { scanResult } from "$lib/stores/scanner.js";
+
+  let recentScans: ScanResult[] = $state([]);
+
+  scanResult.subscribe((value) => {
+    if (value) {
+      recentScans = [value, ...recentScans].slice(0, 10);
+    }
+  });
 </script>
 
 <svelte:head>
@@ -21,11 +32,19 @@
 
   <div class="mt-10 space-y-4">
     <h2 class="text-xl font-semibold">Recent scans</h2>
-    <ProductCard
-      title="Example Product"
-      additives={[]}
-      score={0}
-      scannedAt={new Date().toISOString()}
-    />
+    {#if recentScans.length === 0}
+      <p class="text-sm text-slate-500">No scans yet. Try the scanner above.</p>
+    {:else}
+      <div class="space-y-3">
+        {#each recentScans as item}
+          <ProductCard
+            title={item.productName ?? item.barcode ?? "Unknown product"}
+            additives={(item.additives ?? []).map((a) => ({ code: a.code, name: a.name }))}
+            score={item.score ?? 0}
+            scannedAt={item.scannedAt}
+          />
+        {/each}
+      </div>
+    {/if}
   </div>
 </section>

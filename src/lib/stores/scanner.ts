@@ -1,5 +1,12 @@
 import { writable, type Readable } from "svelte/store";
 
+export interface AdditiveInfo {
+  code: string;
+  name: string;
+  riskLevel: "low" | "medium" | "high";
+  description: string;
+}
+
 export interface ScanResult {
   id: string;
   barcode?: string;
@@ -9,14 +16,28 @@ export interface ScanResult {
   ingredientsText?: string;
   additives?: AdditiveInfo[];
   score?: number;
+  level?: "A" | "B" | "C" | "D" | "F";
+  rationale?: string;
   scannedAt: string;
 }
 
-export interface AdditiveInfo {
-  code: string;
+export interface RuleMatch {
+  ingredient: string;
+  ruleType: "allergy" | "redLine" | "diet";
+  profileName: string;
+  severity: "block" | "warn" | "info";
+}
+
+export interface Profile {
+  id: string;
   name: string;
-  riskLevel: "low" | "medium" | "high";
-  description: string;
+  diets: string[];
+  allergies: string[];
+  redLines: string[];
+  goals: string[];
+  healthDataEnabled: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 function createScannerStore() {
@@ -33,6 +54,5 @@ function createScannerStore() {
 }
 
 export const scanResult = createScannerStore();
-
 export const isScanning = writable(false);
 export const scanError = writable<string | null>(null);

@@ -4,6 +4,11 @@ export interface ScoreResult {
   level: ScoreLevel;
   score: number;
   rationale: string;
+  breakdown: Array<{
+    ingredient: string;
+    risk: "low" | "medium" | "high" | "unknown";
+    weight: number;
+  }>;
 }
 
 const LEVELS: { level: ScoreLevel; min: number; max: number }[] = [
@@ -14,18 +19,37 @@ const LEVELS: { level: ScoreLevel; min: number; max: number }[] = [
   { level: "F", min: 0, max: 39 }
 ];
 
-export function computeProductScore(additivesCount: number): ScoreResult {
-  // Placeholder scoring heuristic.
-  const lowerBound = Math.max(0, 100 - additivesCount * 12);
-  const score = Math.min(100, Math.max(0, lowerBound));
+const ADDITIVE_WEIGHTS: Record<string, number> = {
+  E621: 6,
+  E102: 7,
+  E110: 7,
+  E129: 8,
+  E133: 5,
+  E250: 7,
+  E220: 6,
+  E407: 4
+};
 
-  const level =
-    LEVELS.find((l) => score >= l.min && score <= l.max)?.level ?? "F";
+export function computeProductScore(additives: Array<{ code?: string }>): ScoreResult {
+  let penalty = 0;
+  const breakdown: ScoreResult["breakdown"] = additives.map((item) => {
+    const weight = item.code ? ADDITIVE_WEIGHTS[item.code.toUpperCase()] ?? 3 : 3;
+    penalty += weight;
+    const risk: ScoreResult["breakdown"][number]["risk"] =
+      weight >= 7 ? "high" : weight >= 5 ? "medium" : "low";
+    return {
+      ingredient: item.code ?? "Unknown additive",
+      risk,
+      weight
+    };
+  });
 
+  const score = Math.min(100, Math.max(0, 100 - penalty));
+  const level = LEVELS.find((l) => score >= l.min && score <= l.max)?.level ?? "F";
   const rationale =
-    additivesCount === 0
+    additives.length === 0
       ? "No flagged additives found in this demo scoring model."
-      : `${additivesCount} additive(s) detected; score lowered accordingly.`;
+      : `${additives.length} additive(s) detected; score lowered accordingly.`;
 
-  return { level, score, rationale };
+  return { level, score, rationale, breakdown };
 }
