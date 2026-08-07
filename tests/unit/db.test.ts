@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { db } from "$lib/stores/db.js";
 
-describe("scan history", () => {
+const hasIndexedDB =
+  typeof indexedDB !== "undefined" ||
+  (typeof window !== "undefined" && "indexedDB" in window);
+
+describe.runIf(hasIndexedDB)("scan history", () => {
   it("stores and reads a scan record", async () => {
     const scanId = crypto.randomUUID();
     await db.scans.add({
@@ -19,5 +23,11 @@ describe("scan history", () => {
     expect(record?.productName).toBe("Demo Product");
 
     await db.scans.where("scanId").equals(scanId).delete();
+  });
+});
+
+describe.runIf(!hasIndexedDB)("scan history", () => {
+  it("skips in non-browser environments without IndexedDB", () => {
+    expect(true).toBe(true);
   });
 });

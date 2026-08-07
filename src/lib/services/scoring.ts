@@ -19,6 +19,13 @@ const LEVELS: { level: ScoreLevel; min: number; max: number }[] = [
   { level: "F", min: 0, max: 39 }
 ];
 
+const RISK_PENALTY: Record<string, number> = {
+  low: 5,
+  medium: 10,
+  high: 20,
+  unknown: 10
+};
+
 const ADDITIVE_WEIGHTS: Record<string, number> = {
   E621: 6,
   E102: 7,
@@ -33,10 +40,11 @@ const ADDITIVE_WEIGHTS: Record<string, number> = {
 export function computeProductScore(additives: Array<{ code?: string }>): ScoreResult {
   let penalty = 0;
   const breakdown: ScoreResult["breakdown"] = additives.map((item) => {
-    const weight = item.code ? ADDITIVE_WEIGHTS[item.code.toUpperCase()] ?? 3 : 3;
-    penalty += weight;
+    const upperCode = item.code?.toUpperCase();
+    const weight = upperCode ? ADDITIVE_WEIGHTS[upperCode] ?? 3 : 3;
     const risk: ScoreResult["breakdown"][number]["risk"] =
       weight >= 7 ? "high" : weight >= 5 ? "medium" : "low";
+    penalty += RISK_PENALTY[risk];
     return {
       ingredient: item.code ?? "Unknown additive",
       risk,

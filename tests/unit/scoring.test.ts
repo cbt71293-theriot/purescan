@@ -11,7 +11,7 @@ describe("scoring", () => {
 
   it("lowers score with high-risk additives", () => {
     const result = computeProductScore([{ code: "E129" }]);
-    expect(result.score).toBeLessThan(85);
+    expect(result.score).toBeLessThanOrEqual(84);
     expect(result.breakdown[0].risk).toBe("high");
   });
 });
