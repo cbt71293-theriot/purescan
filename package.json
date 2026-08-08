@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@openfoodfacts/openfoodfacts-nodejs": "^2.0.0-alpha.33",
+    "@sveltejs/adapter-vercel": "^6.3.4",
     "@tailwindcss/postcss": "^4.3.3",
     "dexie": "^4.0.0",
     "dexie-react-hooks": "^1.1.7",
