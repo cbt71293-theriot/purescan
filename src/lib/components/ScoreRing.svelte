@@ -1,9 +1,18 @@
 <script lang="ts">
   interface Props {
     score: number;
+    level?: string;
   }
 
-  let { score }: Props = $props();
+  let { score, level }: Props = $props();
+
+  const levelColor: Record<string, string> = {
+    A: "text-emerald-600",
+    B: "text-lime-600",
+    C: "text-amber-600",
+    D: "text-orange-600",
+    F: "text-red-600"
+  };
 </script>
 
 <div class="inline-flex flex-col items-center">
@@ -29,9 +38,12 @@
       class="text-brand-600"
       transform="rotate(-90 18 18)"
     />
-    <text x="18" y="20" text-anchor="middle" class="text-sm font-semibold fill-slate-900">
+    <text x="18" y="18" text-anchor="middle" class="text-sm font-semibold fill-slate-900">
       {score}
     </text>
   </svg>
-  <span class="text-xs text-slate-500">Purity score</span>
+  <span class="text-xs text-slate-500">Score</span>
+  {#if level}
+    <span class="text-lg font-bold {levelColor[level] || 'text-slate-900'}">{level}</span>
+  {/if}
 </div>

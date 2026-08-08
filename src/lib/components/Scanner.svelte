@@ -7,17 +7,64 @@
   import type { ScanResult } from "$lib/stores/scanner.js";
 
   let fileInput: HTMLInputElement;
+  let scannerContainer: HTMLDivElement;
+  let html5Qrcode: any;
   let scanning = false;
+  let cameraActive = $state(false);
 
   onMount(() => {
     return () => {
-      if (scanning) {
-        isScanning.set(false);
+      if (html5Qrcode && cameraActive) {
+        html5Qrcode.stop().catch(() => {});
       }
     };
   });
 
+  async function startCamera() {
+    if (!scannerContainer) return;
+
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      html5Qrcode = new Html5Qrcode(scannerContainer.id);
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      };
+
+      await html5Qrcode.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText: string) => {
+          handleBarcodeScanned(decodedText);
+        },
+        () => {}
+      );
+
+      cameraActive = true;
+      isScanning.set(true);
+      scanError.set(null);
+    } catch (err) {
+      scanError.set(err instanceof Error ? err.message : "Camera failed to start");
+    }
+  }
+
+  function stopCamera() {
+    if (html5Qrcode && cameraActive) {
+      html5Qrcode.stop().then(() => {
+        cameraActive = false;
+        isScanning.set(false);
+      }).catch(() => {
+        cameraActive = false;
+        isScanning.set(false);
+      });
+    }
+  }
+
   async function handleBarcodeScanned(barcode: string) {
+    if (scanning) return;
+    scanning = true;
     isScanning.set(true);
     scanError.set(null);
     scanResult.set(null);
@@ -72,6 +119,7 @@
     } catch (err) {
       scanError.set(err instanceof Error ? err.message : "Scan failed");
     } finally {
+      scanning = false;
       isScanning.set(false);
     }
   }
@@ -85,9 +133,58 @@
     scanResult.set(null);
 
     try {
-      scanError.set("OCR upload is not implemented yet.");
+      const { default: Tesseract } = await import("tesseract.js");
+      scanError.set("OCR is initializing...");
+
+      const result = await Tesseract.recognize(file, "eng", {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            scanError.set(`OCR scanning: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+
+      const text = result.data.text;
+      if (!text.trim()) {
+        throw new Error("No text detected in image.");
+      }
+
+      const additives = analyzeAdditives(text);
+      const scoreResult = computeProductScore(additives);
+
+      const scanResultData: ScanResult = {
+        id: crypto.randomUUID(),
+        barcode: undefined,
+        productName: "OCR Scan Result",
+        brand: undefined,
+        image: undefined,
+        ingredientsText: text,
+        additives: additives.map((a) => ({
+          code: a.code,
+          name: a.name,
+          riskLevel: a.riskLevel === "unknown" ? "medium" : a.riskLevel,
+          description: a.description
+        })),
+        score: scoreResult.score,
+        level: scoreResult.level,
+        rationale: scoreResult.rationale,
+        scannedAt: new Date().toISOString()
+      };
+
+      scanResult.set(scanResultData);
+
+      await db.scans.add({
+        scanId: scanResultData.id,
+        barcode: scanResultData.barcode,
+        productName: scanResultData.productName,
+        brand: scanResultData.brand,
+        additivesJson: JSON.stringify(additives),
+        score: scanResultData.score ?? 0,
+        scannedAt: scanResultData.scannedAt,
+        syncedAt: undefined
+      });
     } catch (err) {
-      scanError.set(err instanceof Error ? err.message : "Upload failed");
+      scanError.set(err instanceof Error ? err.message : "OCR failed");
     } finally {
       input.value = "";
     }
@@ -98,12 +195,12 @@
   <div class="flex flex-col gap-4">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold">Scanner</h2>
-      <span class="text-xs text-slate-500">Barcode demo / image upload</span>
+      <span class="text-xs text-slate-500">Barcode / OCR</span>
     </div>
 
-    {#if $isScanning}
+    {#if $isScanning && !cameraActive}
       <p class="text-sm text-slate-600">Scanning…</p>
-    {:else if $scanError}
+    {:else if $scanError && !cameraActive}
       <p class="text-sm text-red-600">{$scanError}</p>
     {:else if $scanResult}
       <div class="space-y-2">
@@ -116,28 +213,44 @@
         <p class="text-xs text-slate-500">{$scanResult.rationale}</p>
       </div>
     {:else}
-      <p class="text-sm text-slate-500">No active scan.</p>
+      <p class="text-sm text-slate-500">Start a scan below.</p>
     {/if}
 
-    <div class="flex flex-wrap gap-2">
-      <button
-        class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        on:click={() => handleBarcodeScanned("3017760000123")}
-      >
-        Demo barcode
-      </button>
+    <div class="flex flex-col gap-3">
+      {#if !cameraActive}
+        <button
+          class="rounded-lg bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700"
+          onclick={startCamera}
+        >
+          Start Camera
+        </button>
+      {:else}
+        <button
+          class="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          onclick={stopCamera}
+        >
+          Stop Camera
+        </button>
+      {/if}
+
+      <div
+        id="scanner-reader"
+        bind:this={scannerContainer}
+        class="hidden"
+      ></div>
+
       <button
         class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        on:click={() => fileInput?.click()}
+        onclick={() => fileInput?.click()}
       >
-        Upload ingredients
+        Upload ingredients image
       </button>
       <input
         bind:this={fileInput}
         type="file"
         accept="image/*"
         class="hidden"
-        on:change={handleFileSelected}
+        onchange={handleFileSelected}
       />
     </div>
   </div>

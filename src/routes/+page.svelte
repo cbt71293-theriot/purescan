@@ -39,8 +39,17 @@
         {#each recentScans as item}
           <ProductCard
             title={item.productName ?? item.barcode ?? "Unknown product"}
-            additives={(item.additives ?? []).map((a) => ({ code: a.code, name: a.name }))}
+            brand={item.brand}
+            image={item.image}
+            additives={(item.additives ?? []).map((a) => ({
+              code: a.code,
+              name: a.name,
+              riskLevel: a.riskLevel,
+              description: a.description
+            }))}
             score={item.score ?? 0}
+            level={item.level}
+            rationale={item.rationale}
             scannedAt={item.scannedAt}
           />
         {/each}

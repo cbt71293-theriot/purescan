@@ -1,8 +1,10 @@
 <script lang="ts">
   import { db } from "$lib/stores/db.js";
   import { onMount } from "svelte";
+  import ProductCard from "$lib/components/ProductCard.svelte";
 
   let scans = $state<Array<{
+    id?: number;
     scanId: string;
     barcode?: string;
     productName?: string;
@@ -16,6 +18,11 @@
   onMount(async () => {
     scans = await db.scans.orderBy("scannedAt").reverse().limit(50).toArray();
   });
+
+  async function removeScan(scanId: string) {
+    await db.scans.where("scanId").equals(scanId).delete();
+    scans = await db.scans.orderBy("scannedAt").reverse().limit(50).toArray();
+  }
 </script>
 
 <section class="space-y-6">
@@ -28,19 +35,34 @@
   {:else}
     <div class="space-y-3">
       {#each scans as scan}
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="font-medium text-slate-900">{scan.productName ?? scan.barcode ?? "Unknown"}</p>
-              <p class="text-xs text-slate-500">
-                {new Date(scan.scannedAt).toLocaleString()}
-              </p>
-            </div>
-            <div class="text-right">
-              <p class="text-xl font-bold text-brand-700">{scan.score}</p>
-              <p class="text-xs text-slate-500">Score</p>
-            </div>
+        {@const additives = (() => {
+          try {
+            return JSON.parse(scan.additivesJson || "[]");
+          } catch {
+            return [];
+          }
+        })()}
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex-1">
+            <ProductCard
+              title={scan.productName ?? scan.barcode ?? "Unknown"}
+              brand={scan.brand}
+              additives={additives.map((a: any) => ({
+                code: a.code,
+                name: a.name,
+                riskLevel: a.riskLevel,
+                description: a.description
+              }))}
+              score={scan.score}
+              scannedAt={scan.scannedAt}
+            />
           </div>
+          <button
+            class="text-xs text-red-600 hover:text-red-700"
+            onclick={() => removeScan(scan.scanId)}
+          >
+            Remove
+          </button>
         </div>
       {/each}
     </div>
