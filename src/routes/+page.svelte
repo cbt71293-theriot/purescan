@@ -1,16 +1,36 @@
 <script lang="ts">
-  import Scanner from "$lib/components/Scanner.svelte";
+  import { onMount } from "svelte";
+  import { db } from "$lib/stores/db.js";
   import ProductCard from "$lib/components/ProductCard.svelte";
   import type { ScanResult } from "$lib/stores/scanner.js";
 
-  import { scanResult } from "$lib/stores/scanner.js";
+  let recentScans = $state<(ScanResult & { scanId: string })[]>([]);
 
-  let recentScans: ScanResult[] = $state([]);
-
-  scanResult.subscribe((value) => {
-    if (value) {
-      recentScans = [value, ...recentScans].slice(0, 10);
-    }
+  onMount(async () => {
+    const rows = await db.scans.orderBy("scannedAt").reverse().limit(10).toArray();
+    recentScans = rows
+      .map((row) => {
+        let additives: ScanResult["additives"] = [];
+        try {
+          additives = JSON.parse(row.additivesJson || "[]");
+        } catch {
+          // ignore parse errors
+        }
+        return {
+          id: row.scanId,
+          scanId: row.scanId,
+          barcode: row.barcode,
+          productName: row.productName,
+          brand: row.brand,
+          image: undefined,
+          ingredientsText: undefined,
+          additives,
+          score: row.score,
+          level: undefined,
+          rationale: undefined,
+          scannedAt: row.scannedAt
+        };
+      });
   });
 </script>
 
@@ -20,20 +40,15 @@
 
 <section class="space-y-6">
   <div class="text-center">
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">
-      Scan your food. Understand additives.
-    </h1>
-    <p class="mt-2 text-slate-600">
-      Point your camera at a barcode or upload an ingredients image to get a plain-language safety and health analysis.
-    </p>
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Scan your food. Understand additives.</h1>
+    <p class="mt-2 text-slate-600">Start with the scanner, then review your recent results below.</p>
+    <a href="/scan" class="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700">Go to scanner</a>
   </div>
-
-  <Scanner />
 
   <div class="mt-10 space-y-4">
     <h2 class="text-xl font-semibold">Recent scans</h2>
     {#if recentScans.length === 0}
-      <p class="text-sm text-slate-500">No scans yet. Try the scanner above.</p>
+      <p class="text-sm text-slate-500">No scans yet. Try the scanner.</p>
     {:else}
       <div class="space-y-3">
         {#each recentScans as item}

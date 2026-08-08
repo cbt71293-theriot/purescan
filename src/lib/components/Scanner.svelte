@@ -220,8 +220,11 @@
 
     {#if $isScanning && !cameraActive}
       <p class="text-sm text-slate-600">Scanning…</p>
-    {:else if $scanError && !cameraActive}
-      <p class="text-sm text-red-600">{$scanError}</p>
+    {:else if $scanError && !$scanResult}
+      <div class="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+        <span class="mt-0.5 inline-flex h-2 w-2 rounded-full bg-red-600"></span>
+        <span>{$scanError}</span>
+      </div>
     {:else if $scanResult}
       <div class="space-y-2">
         <p class="text-sm text-slate-700">
@@ -282,7 +285,7 @@
       <div
         id="scanner-reader"
         bind:this={scannerContainer}
-        class="hidden"
+        class="rounded-lg bg-slate-50"
       ></div>
 
       <button
